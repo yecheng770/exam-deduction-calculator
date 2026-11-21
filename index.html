@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>考试扣分计算器</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                   "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      user-select: none;
+      background: var(--bg-tint);
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    .container {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;      /* 锁定一屏高度：任何手机上都以屏幕高为上限，键盘区不会被推到屏幕外 */
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    /* 极短屏（横屏、小屏老机型）允许整页滚动，避免内容被裁掉 */
+    @media (max-height: 520px) {
+      .container { height: auto; min-height: 100dvh; overflow: visible; }
+    }
+    .header {
+      padding: calc(clamp(8px, 2vh, 16px) + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) 12px clamp(8px, 2vh, 16px) 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    /* —— 日间主题色（默认红粉；设置里可切换）—— */
+    body:root {}
+    body {
+      --accent: #d63384;
+      --accent-strong: #ff2442;
+      --accent-rgb: 214, 51, 132;
+      --grad-from: #ff2442;
+      --grad-to: #d63384;
+      --five-bg: #ff4d6a;
+      --ten-bg: #d63384;
+      --half-bg: #ffa0b8;
+    }
+    body[data-theme-color="red"] {
+      --accent: #d65050; --accent-strong: #e04343;
+      --accent-rgb: 214, 80, 80;
+      --grad-from: #e04343; --grad-to: #c13b3b;
+      --five-bg: #e46a6a; --ten-bg: #c13b3b; --half-bg: #ef9d9d;
+      --bg-tint: #fdf1f1;
+      --modal-veil: rgba(193, 59, 59, 0.4);
+      --option-border: #f0c8c8;
+    }
+    body[data-theme-color="pink"] {
+      --accent: #d63384; --accent-strong: #ff2442;
+      --accent-rgb: 214, 51, 132;
+      --grad-from: #ff2442; --grad-to: #d63384;
+      --five-bg: #ff4d6a; --ten-bg: #d63384; --half-bg: #ffa0b8;
+    }
+    body[data-theme-color="purple"] {
+      --accent: #8f6cc8; --accent-strong: #7a58b8;
+      --accent-rgb: 143, 108, 200;
+      --grad-from: #8f6cc8; --grad-to: #6e4fa8;
+      --five-bg: #a488d6; --ten-bg: #6e4fa8; --half-bg: #c2ade4;
+      --bg-tint: #f6f3fb;
+      --modal-veil: rgba(110, 79, 168, 0.4);
+      --option-border: #ddd2ec;
+    }
+    body[data-theme-color="blue"] {
+      --accent: #5a8fc8; --accent-strong: #4a7fb8;
+      --accent-rgb: 90, 143, 200;
+      --grad-from: #5a8fc8; --grad-to: #3f6fae;
+      --five-bg: #7aa8d8; --ten-bg: #3f6fae; --half-bg: #a6c6e8;
+      --bg-tint: #f0f5fa;
+      --modal-veil: rgba(63, 111, 174, 0.4);
+      --option-border: #ccdaf0;
+    }
+    body[data-theme-color="teal"] {
+      --accent: #3fa39a; --accent-strong: #33918a;
+      --accent-rgb: 63, 163, 154;
+      --grad-from: #3fa39a; --grad-to: #2e827b;
+      --five-bg: #5cb8b0; --ten-bg: #2e827b; --half-bg: #8fd0ca;
+      --bg-tint: #eef7f6;
+      --modal-veil: rgba(46, 130, 123, 0.4);
+      --option-border: #c2e0dc;
+    }
+    body[data-theme-color="green"] {
+      --accent: #6a9a44; --accent-strong: #5a8a38;
+      --accent-rgb: 106, 154, 68;
+      --grad-from: #6a9a44; --grad-to: #517c31;
+      --five-bg: #86b86a; --ten-bg: #517c31; --half-bg: #b0d49a;
+      --bg-tint: #f2f7ec;
+      --modal-veil: rgba(81, 124, 49, 0.4);
+      --option-border: #d2e2c4;
+    }
+    body[data-theme-color="gray"] {
+      --accent: #7a7f87; --accent-strong: #6a7078;
+      --accent-rgb: 122, 127, 135;
+      --grad-from: #84898f; --grad-to: #5f646b;
+      --five-bg: #9aa0a8; --ten-bg: #5f646b; --half-bg: #bcc1c8;
+      --bg-tint: #f3f4f5;
+      --modal-veil: rgba(95, 100, 107, 0.4);
+      --option-border: #d5d8dc;
+    }
+    .header h1 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      flex: 1;
+      transition: color 0.3s ease;
+    }
+    body {
+      --bg-tint: #fff1f0;
+      --modal-veil: rgba(var(--accent-rgb), 0.4);
+      --option-border: #ffd6e0;
+    }
+    .header h1.easter-egg {
+      color: var(--accent-strong);
+      animation: blink 0.8s ease-in-out infinite alternate;
+    }
+    body.dark .header h1.easter-egg { color: #ff7b72; }
+    @keyframes blink {
+      from { opacity: 1; }
+      to { opacity: 0.55; }
+    }
+    .set-theme-btn {
+      height: 34px;
+      padding: 0 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: #ffffff;
+      border: 1px solid var(--option-border);
+      border-radius: 10px;
+      cursor: pointer;
+      color: var(--accent);
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .set-theme-btn:focus { outline: none; }
+    .set-theme-btn:active { opacity: 0.7; }
+    .set-theme-btn:focus { outline: none; }
+    .set-theme-btn svg { flex-shrink: 0; display: block; }
+    .theme-track {
+      width: 38px;
+      height: 20px;
+      border-radius: 10px;
+      background: var(--accent);
+      position: relative;
+      transition: background 0.2s ease;
+    }
+    .theme-knob {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #ffffff;
+      transition: transform 0.2s ease;
+    }
+    body.dark .theme-track { background: #1f6feb; }
+    body.dark .theme-knob { transform: translateX(18px); }
+    .settings-btn {
+      display: none;
+    }
+
+    .display-area {
+      padding: clamp(10px, 2.2vh, 22px) 20px clamp(8px, 1.8vh, 18px) 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .score-card {
+      flex: 1;
+      min-width: 0;
+      max-width: 100%; /* 内容再长也不许把卡片顶出屏幕 */
+      position: relative;
+      /* 分数与等级共用同一字号，短屏自动缩，长屏最多 72px */
+      --score-size: clamp(46px, 9vh, 72px);
+      background: linear-gradient(135deg, var(--grad-from) 0%, var(--grad-to) 100%);
+      border-radius: 24px;
+      padding: clamp(14px, 2.4vh, 20px) 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .score-content { display: flex; flex-direction: column; min-width: 0; }
+    .score-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.82);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .current-score {
+      font-size: var(--score-size);
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1;
+      letter-spacing: -2px;
+    }
+    .score-emoji {
+      font-size: clamp(40px, 7.6vh, 60px);
+      margin-left: 16px;
+    }
+    /* 等级大字：所有等级名一律与左侧分数同字号（A 和 A+ 看起来一样大）。
+       只有真正长到放不下时才由 JS 按实际渲染宽度微缩，不按字符个数降档。 */
+    .score-emoji.grade-badge {
+      font-size: var(--score-size);
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1;
+      letter-spacing: -1px;
+      white-space: nowrap;
+      min-width: 0;
+      overflow: hidden; /* 允许被压缩，实际宽度由 JS 按文字宽度决定是否缩字号 */
+      align-self: flex-end; /* 与分数同一底线，不再因为上方小标签而整体下移 */
+    }
+    body.dark .score-emoji.grade-badge { color: #e6edf3; }
+
+    .history-section {
+      padding: 6px 20px clamp(8px, 1.4vh, 14px) 20px;
+      flex: 0 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .history-title-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    /* 说明文字跟随主题色：用当前主题强调色 + 降透明度，切任何主题色都统一 */
+    .history-title {
+      font-size: 12px;
+      color: var(--accent-strong);
+      opacity: 0.68;
+      font-weight: 500;
+      margin-right: auto;
+      letter-spacing: 0;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .theme-settings-btn {
+      width: 34px;
+      height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin-left: 8px;
+      background: #ffffff;
+      border: 1px solid var(--option-border);
+      border-radius: 10px;
+      color: var(--accent);
+      cursor: pointer;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* 有新版本时，设置按钮本身变宽：齿轮 + 一条竖线 + “查看更新”，点一次后永久收起 */
+    .theme-settings-btn.has-update {
+      width: auto;
+      padding: 0 7px;
+      color: var(--accent-strong);
+      border-color: var(--accent-strong);
+      background: rgba(var(--accent-rgb), 0.1);
+      animation: badgePulse 1.8s ease-in-out infinite;
+    }
+    .update-text {
+      display: none;
+      margin-left: 5px;
+      padding-left: 6px;
+      border-left: 1px solid rgba(var(--accent-rgb), 0.4);
+      font-size: 10px;
+      line-height: 1;
+      font-weight: 600;
+      color: var(--accent-strong);
+      white-space: nowrap;
+    }
+    .theme-settings-btn.has-update .update-text { display: inline-block; }
+    .theme-settings-btn.has-update:active { opacity: 0.7; }
+    @keyframes badgePulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.32); }
+      50% { box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0); }
+    }
+    body.dark .theme-settings-btn.has-update {
+      color: #79c0ff;
+      border-color: #1f6feb;
+      background: rgba(31, 111, 235, 0.18);
+    }
+    body.dark .update-text {
+      color: #79c0ff;
+      border-left-color: rgba(31, 111, 235, 0.5);
+    }
+    /* 设置里的本次更新说明：只在第一次打开设置时出现 */
+    .update-note {
+      display: none;
+      margin: 0 0 12px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(var(--accent-rgb), 0.1);
+      color: var(--accent-strong);
+      font-size: 11px;
+      line-height: 1.5;
+      font-weight: 500;
+    }
+    body.dark .update-note {
+      background: rgba(31, 111, 235, 0.16);
+      color: #79c0ff;
+    }
+    .history-items {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr) 10px repeat(5, 1fr);
+      grid-gap: 6px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+      align-content: flex-start;
+      height: clamp(48px, 8.6vh, 84px); /* 随屏高伸缩，短屏不抢键盘区的位置 */
+      min-height: 0;
+      padding-bottom: 8px;
+    }
+    .history-item {
+      background: #ffffff;
+      color: var(--accent-strong);
+      padding: 5px 0;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      white-space: nowrap;
+      border: 1px solid var(--option-border);
+    }
+    /* 空记录提示：与标题、分割线同一主色，只靠透明度分层 */
+    .history-empty {
+      grid-column: 1 / -1;
+      font-size: 13px;
+      color: var(--accent-strong);
+      opacity: 0.6;
+    }
+    body.dark .history-empty { color: #7d8590; opacity: 1; }
+    /* 中间那条竖分割线同样跟主题色走，只是更淡 */
+    .history-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-strong);
+      opacity: 0.32;
+      font-size: 14px;
+    }
+    .buttons-area {
+      padding: clamp(8px, 1.8vh, 16px) 20px;
+      padding-bottom: calc(clamp(8px, 1.8vh, 16px) + env(safe-area-inset-bottom, 0px));
+      flex: 1 1 auto;   /* 键盘区吃掉剩余高度 */
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .top-actions {
+      display: grid;
+      grid-template-columns: 1fr 72px;
+      grid-gap: 12px;
+      margin-bottom: clamp(8px, 1.6vh, 18px);
+      flex-shrink: 0;
+    }
+    .reset-btn {
+      height: clamp(46px, 7.4vh, 60px);
+      border: none;
+      border-radius: 18px;
+      font-size: 22px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #ffffff;
+      color: var(--accent-strong);
+      transition: background 0.08s ease, color 0.08s ease, transform 0.08s ease;
+      box-shadow: 0 2px 10px rgba(var(--accent-rgb), 0.08);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .reset-btn:active {
+      transform: scale(0.95);
+      background: var(--half-bg);
+      color: var(--grad-to);
+    }
+    .quick-row .mode-btn {
+      flex: 1;
+    }
+    .quick-row .mode-btn.selected {
+      border-color: var(--accent-strong);
+    }
+    .segment {
+      display: flex;
+      background: #ffffff;
+      border: 1px solid var(--option-border);
+      border-radius: 12px;
+      padding: 3px;
+      gap: 3px;
+    }
+    .segment-btn {
+      flex: 1;
+      height: 32px;
+      border: none;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .segment-btn.selected {
+      background: var(--accent-strong);
+      color: #ffffff;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+    }
+    /* 减法/加法前面的正负号：和"＋添加等级"同一套字符（全角 ＋ / －），
+       两者字宽一致，高度、基线由字体统一决定，不会再出现一高一低 */
+    .mode-sign {
+      display: inline-block;
+      margin-right: 2px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    body.dark .segment { background: #21262d; border-color: #30363d; }
+    body.dark .segment-btn { color: #e6edf3; }
+    body.dark .segment-btn.selected { background: #1f6feb; color: #ffffff; }
+    .theme-color-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .grade-hint {
+      font-size: 11px;
+      color: var(--accent-strong);
+      opacity: 0.6;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+    .grade-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .grade-row.grade-row-locked {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .grade-row-locked::after {
+      content: "";
+      width: 34px; /* 与 .grade-del-btn 同宽，保证最低档数字框和上面各行的框左右对齐 */
+      flex-shrink: 0;
+    }
+    .grade-row-locked .grade-min-input {
+      margin-right: 0;
+    }
+    .grade-min-label {
+      width: 16px;
+      flex-shrink: 0;
+      text-align: center;
+      font-size: 14px;
+      line-height: 1;
+    }
+    .grade-name-input {
+      width: 70px;
+      height: 34px;
+      border: 1px solid var(--option-border);
+      border-radius: 8px;
+      background: var(--bg-tint);
+      color: var(--accent-strong);
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      padding: 0 4px;
+    }
+    /* 占位文字"待命名"：淡一档，不跟已填写的等级名抢注意力 */
+    .grade-name-input::placeholder {
+      color: var(--accent-strong);
+      opacity: 0.4;
+      font-weight: 500;
+    }
+    body.dark .grade-name-input::placeholder { color: #6e7681; opacity: 1; }
+    .grade-min-input {
+      flex: 1;
+      height: 34px;
+      border: 1px solid var(--option-border);
+      border-radius: 8px;
+      background: var(--bg-tint);
+      color: var(--accent-strong);
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+    }
+    .grade-min-locked {
+      flex: 1;
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 34px;
+      background: #ffffff;
+      border: 1px solid var(--option-border);
+      border-radius: 8px;
+      color: var(--accent-strong);
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .grade-min-locked {
+      font-variant-numeric: tabular-nums;
+      background-image: repeating-linear-gradient(
+        135deg,
+        transparent,
+        transparent 6px,
+        rgba(90, 58, 68, 0.055) 6px,
+        rgba(90, 58, 68, 0.055) 8px
+      );
+      cursor: not-allowed;
+    }
+    .grade-del-spacer { width: 42px; flex-shrink: 0; }
+    .grade-row:last-child .grade-del-spacer { display: inline-block; }
+    body.dark .grade-min-locked { color: #e6edf3; background: #21262d; border-color: #30363d; }
+    .grade-name-input:focus, .grade-min-input:focus {
+      outline: none;
+      border-color: var(--accent-strong);
+    }
+    .grade-del-btn {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--option-border);
+      border-radius: 8px;
+      background: var(--bg-tint);
+      color: var(--accent-strong);
+      opacity: 0.75;
+      font-size: 15px;
+      cursor: pointer;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .grade-actions-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .grade-actions-row .grade-add-btn,
+    .grade-actions-row .grade-sort-btn {
+      flex: 1;
+      height: 34px;
+      border: 1px dashed var(--option-border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    /* 排序按钮只在"改过等级表"之后才出现，出现即高亮，提醒还有一步没点 */
+    .grade-sort-btn { margin-top: 0; }
+    .grade-actions-row .grade-sort-btn {
+      border: 1px solid var(--accent-strong);
+      border-style: solid;
+      background: var(--accent-strong);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.26);
+    }
+    .grade-actions-row .grade-sort-btn:active {
+      transform: scale(0.97);
+      box-shadow: none;
+    }
+    body.dark .grade-actions-row .grade-sort-btn {
+      background: #1f6feb;
+      border-color: #1f6feb;
+      box-shadow: 0 2px 8px rgba(31, 111, 235, 0.4);
+    }
+    body.dark .grade-hint { color: #7d8590; opacity: 1; }
+    body.dark .grade-name-input, body.dark .grade-min-input,
+    body.dark .grade-del-btn { background: #21262d; border-color: #30363d; color: #e6edf3; }
+    body.dark .grade-del-btn { opacity: 1; }
+    .color-dot {
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.12s ease, border-color 0.12s ease;
+    }
+    .color-dot:active { transform: scale(0.88); }
+    .color-dot.selected {
+      border-color: #4a3a44;
+      transform: scale(1.08);
+    }
+    .undo-btn {
+      height: clamp(46px, 7.4vh, 60px);
+      border: 1px solid var(--option-border);
+      border-radius: 18px;
+      font-size: 24px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #ffffff;
+      color: var(--accent);
+      transition: background 0.08s ease, color 0.08s ease, transform 0.08s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .undo-btn:active {
+      transform: scale(0.95);
+      background: var(--half-bg);
+      color: var(--grad-to);
+    }
+    body.dark .reset-btn:active,
+    body.dark .undo-btn:active {
+      background: #388bfd;
+      color: #0d1117;
+    }
+    /* 4 行按键平均瓜分剩余高度：屏幕高就高，屏幕矮就压扁，永不溢出 */
+    .number-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-auto-rows: 1fr;
+      grid-gap: clamp(8px, 1.5vh, 12px);
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: 420px; /* 大屏上限：单行按键最高约 99px，不会拉成一张巨板，也不留大片空白 */
+    }
+    .number-btn {
+      border: none;
+      border-radius: 18px;
+      font-size: clamp(20px, 3.2vh, 26px);
+      font-weight: 700;
+      cursor: pointer;
+      background: #ffffff;
+      color: #4a3a44;
+      transition: opacity 0.12s ease, background 0.08s ease, color 0.08s ease, transform 0.08s ease;
+      box-shadow: 0 2px 10px rgba(var(--accent-rgb), 0.06);
+      min-height: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .number-btn:active {
+      opacity: 1;
+      transform: scale(0.93);
+      background: var(--half-bg);
+      color: var(--grad-to);
+    }
+    .number-btn.five:active { background: var(--grad-from); color: #ffffff; }
+    .number-btn.ten:active { background: var(--grad-to); color: #ffffff; }
+    .number-btn.half:active { background: var(--ten-bg); color: #ffffff; }
+    body.dark .number-btn:active {
+      background: #388bfd;
+      color: #0d1117;
+    }
+    body.dark .number-btn.five:active { background: #58a6ff; color: #0d1117; }
+    body.dark .number-btn.ten:active { background: #d2a8ff; color: #0d1117; }
+    body.dark .number-btn.half:active { background: #8b949e; color: #0d1117; }
+    .number-btn.deduct { color: var(--accent-strong); }
+    .number-btn.five   { background: var(--five-bg); color: #fff; }
+    .number-btn.ten    { background: var(--ten-bg); color: #fff; }
+    .number-btn.half   { background: var(--half-bg); color: #fff; }
+    /* 自定义数值键：描边 + 淡底，跟主题色走，但和 5 / 10 的实心键明显区分 */
+    .custom-slot { display: flex; min-height: 0; }
+    .number-btn.custom {
+      width: 100%;
+      height: 100%;
+      background: rgba(var(--accent-rgb), 0.13);
+      color: var(--accent-strong);
+      border: 2px solid var(--accent-strong);
+      box-shadow: 0 2px 10px rgba(var(--accent-rgb), 0.18);
+    }
+    .number-btn.custom:active {
+      background: var(--accent-strong);
+      color: #ffffff;
+      opacity: 1;
+    }
+    body.dark .number-btn.custom {
+      background: rgba(31, 111, 235, 0.16);
+      color: #79c0ff;
+      border-color: #1f6feb;
+      box-shadow: none;
+    }
+    body.dark .number-btn.custom:active { background: #1f6feb; color: #0d1117; }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--modal-veil);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 24px;
+      width: 100%;
+      max-width: 400px;
+      max-height: 90vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .modal-header {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #4a3a44;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    /* 标题右侧：音效 / 震动两个小开关，样式与顶部夜间开关同款 */
+    .header-feedback {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .mini-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 26px;
+      padding: 4px 6px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--accent-strong);
+      opacity: 0.42;
+      cursor: pointer;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease;
+    }
+    .mini-switch.on { opacity: 1; }
+    .mini-switch svg { display: block; flex-shrink: 0; }
+    .mini-track {
+      width: 34px;
+      height: 18px;
+      border-radius: 9px;
+      background: #d9cdd3;
+      position: relative;
+      transition: background 0.2s ease;
+    }
+    .mini-knob {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      transition: transform 0.2s ease;
+    }
+    .mini-switch.on .mini-track { background: var(--accent-strong); }
+    .mini-switch.on .mini-knob { transform: translateX(16px); }
+    body.dark .mini-switch { color: #e6edf3; }
+    body.dark .mini-track { background: #30363d; }
+    body.dark .mini-switch.on .mini-track { background: #1f6feb; }
+    /* 自定义数值：开关行 + 滑条 */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .setting-label-inline { margin-bottom: 0; }
+    .custom-value-row { display: flex; align-items: center; gap: 12px; }
+    .custom-range {
+      -webkit-appearance: none;
+      appearance: none;
+      flex: 1 1 auto;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(var(--accent-rgb), 0.22);
+      outline: none;
+    }
+    .custom-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent-strong);
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(var(--accent-rgb), 0.5);
+      cursor: pointer;
+    }
+    .custom-range::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent-strong);
+      border: 2px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(var(--accent-rgb), 0.5);
+      cursor: pointer;
+    }
+    .custom-value-num {
+      min-width: 42px;
+      text-align: right;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--accent-strong);
+      font-variant-numeric: tabular-nums;
+    }
+    .custom-value-hint {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--accent);
+      opacity: 0.62;
+    }
+    body.dark .custom-range { background: rgba(31, 111, 235, 0.3); }
+    body.dark .custom-range::-webkit-slider-thumb { background: #1f6feb; border-color: #0d1117; }
+    body.dark .custom-range::-moz-range-thumb { background: #1f6feb; border-color: #0d1117; }
+    body.dark .custom-value-num { color: #79c0ff; }
+    body.dark .custom-value-hint { color: #7d8590; opacity: 1; }
+    .setting-item { margin-bottom: 20px; }
+    .setting-label {
+      font-size: 14px;
+      color: var(--accent-strong);
+      opacity: 0.82;
+      margin-bottom: 10px;
+      display: block;
+      font-weight: 700;
+    }
+    .quick-row { display: flex; }
+    .quick-row > button + button { margin-left: 8px; }
+    .quick-score-btn {
+      flex: 1;
+      height: 40px;
+      border: 1px solid var(--option-border);
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--bg-tint);
+      color: var(--accent);
+      transition: all 0.12s ease;
+    }
+    .quick-score-btn:active { opacity: 0.75; }
+    .quick-score-btn.selected {
+      background: var(--accent-strong);
+      border-color: var(--accent-strong);
+      color: #ffffff;
+    }
+    .setting-input {
+      width: 100%;
+      height: 44px;
+      border: 2px solid var(--option-border);
+      border-radius: 12px;
+      padding: 0 12px;
+      font-size: 16px;
+      color: #4a3a44;
+      background: #ffffff;
+      transition: border 0.2s;
+      margin-top: 12px;
+    }
+    .setting-input:focus { outline: none; border-color: var(--accent-strong); }
+    .modal-buttons { display: flex; margin-top: 24px; }
+    .modal-buttons > button + button { margin-left: 10px; }
+    .modal-btn {
+      flex: 1;
+      height: 44px;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .modal-btn.cancel { background: var(--half-bg); color: var(--grad-to); }
+    .modal-btn.save   { background: linear-gradient(135deg, var(--grad-from) 0%, var(--grad-to) 100%); color: #fff; }
+    .modal-btn:active { opacity: 0.85; }
+
+    .toast-mask {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      padding: 24px;
+    }
+    .toast-mask.active { display: flex; }
+    .toast-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px 22px;
+      max-width: 300px;
+      width: 100%;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+      text-align: center;
+    }
+    .toast-title { font-size: 15px; font-weight: 800; color: var(--accent-strong); margin-bottom: 8px; }
+    .toast-body { font-size: 13px; color: #5a4a52; line-height: 1.6; margin-bottom: 16px; white-space: pre-line; }
+    .toast-btn {
+      width: 100%;
+      height: 40px;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent-strong);
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    body.dark .toast-card { background: #21262d; }
+    body.dark .toast-body { color: #b0b8c1; }
+
+    /* 底部安全区已并入 .buttons-area 的 padding，这里不再重复覆盖 */
+
+    /* —— 夜间暗色主题（GitHub Dark 配色）—— */
+    body.dark { background: #0d1117; }
+    body.dark .header h1 { color: #e6edf3; }
+    body.dark .set-theme-btn,
+    body.dark .theme-settings-btn {
+      background: #21262d;
+      border-color: #30363d;
+      color: #e6edf3;
+    }
+    body.dark .score-card { background: linear-gradient(135deg, #bc4c00 0%, #8b949e 0%); background: linear-gradient(135deg, #1f6feb 0%, #a371f7 100%); }
+    body.dark .current-score { color: #ffffff; }
+    body.dark .score-label { color: rgba(230,237,243,0.75); }
+    body.dark .history-title { color: #7d8590; opacity: 1; }
+    body.dark .history-item {
+      background: #161b22;
+      color: #79c0ff;
+      border-color: #30363d;
+    }
+    body.dark .history-divider { color: #484f58; opacity: 1; }
+    body.dark .reset-btn { background: #21262d; color: #e6edf3; box-shadow: none; }
+    body.dark .undo-btn { background: #21262d; color: #e6edf3; border-color: #30363d; }
+    body.dark .number-btn { background: #21262d; color: #7ee787; box-shadow: none; }
+    body.dark .number-btn.five { background: #1f6feb; color: #ffffff; }
+    body.dark .number-btn.ten { background: #a371f7; color: #ffffff; }
+    body.dark .number-btn.half { background: #6e7681; color: #ffffff; }
+    body.dark .modal { background: rgba(1,4,9,0.6); }
+    body.dark .modal-content { background: #161b22; }
+    body.dark .modal-header { color: #e6edf3; }
+    body.dark .setting-label { color: #7d8590; opacity: 1; }
+    body.dark .quick-score-btn { background: #21262d; border-color: #30363d; color: #e6edf3; }
+    body.dark .quick-score-btn.selected { background: #1f6feb; border-color: #1f6feb; color: #fff; }
+    body.dark .setting-input { background: #0d1117; border-color: #30363d; color: #e6edf3; }
+    body.dark .modal-btn.cancel { background: #21262d; color: #e6edf3; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 id="headerTitle">考试扣分计算器</h1>
+    </div>
+
+    <div class="display-area">
+      <div class="score-card">
+        <div class="score-content">
+          <div class="current-score" id="currentScore">100</div>
+        </div>
+        <div class="score-emoji" id="scoreEmoji">😄</div>
+      </div>
+    </div>
+
+    <div class="history-section" id="historySection">
+      <div class="history-title-row">
+        <div class="history-title">扣分记录（下方可上下拖动）</div>
+        <button class="set-theme-btn" id="themeBtn" aria-label="切换主题"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><span class="theme-track"><span class="theme-knob"></span></span><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+        <button class="theme-settings-btn" id="settingsBtn" aria-label="打开设置"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg><span class="update-text" id="updateText">查看更新</span></button>
+      </div>
+      <div class="history-items" id="historyItems"></div>
+    </div>
+
+    <div class="buttons-area" id="buttonsArea">
+      <div class="top-actions">
+        <button class="reset-btn" id="resetBtn">100分</button>
+        <button class="undo-btn" id="undoBtn">↶</button>
+      </div>
+      <div class="number-grid" id="numberGrid">
+        <button class="number-btn deduct" data-deduct="7">-7</button>
+        <button class="number-btn deduct" data-deduct="8">-8</button>
+        <button class="number-btn deduct" data-deduct="9">-9</button>
+        <button class="number-btn deduct" data-deduct="4">-4</button>
+        <button class="number-btn five" data-deduct="5">-5</button>
+        <button class="number-btn deduct" data-deduct="6">-6</button>
+        <button class="number-btn deduct" data-deduct="1">-1</button>
+        <button class="number-btn deduct" data-deduct="2">-2</button>
+        <button class="number-btn deduct" data-deduct="3">-3</button>
+        <button class="number-btn half" data-deduct="0.5">-0.5</button>
+        <div class="custom-slot" id="customSlot">
+          <button class="number-btn custom" id="customBtn" data-deduct="1.5" style="display:none">-1.5</button>
+        </div>
+        <button class="number-btn ten" data-deduct="10">-10</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置弹窗 -->
+  <div class="modal" id="settingsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>设置</span>
+        <div class="header-feedback">
+          <button type="button" class="mini-switch on" id="soundSwitch" aria-label="音效开关" aria-pressed="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+            <span class="mini-track"><span class="mini-knob"></span></span>
+          </button>
+          <button type="button" class="mini-switch on" id="vibrateSwitch" aria-label="震动反馈开关" aria-pressed="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="4" width="10" height="16" rx="2"/><path d="M3 9v6"/><path d="M21 9v6"/></svg>
+            <span class="mini-track"><span class="mini-knob"></span></span>
+          </button>
+        </div>
+      </div>
+      <div class="update-note" id="updateNote">本次更新：自定义数值按钮支持 0.05 步长（如 0.25、1.75）；设置里新增「键盘顺序倒转」，可切换成 123/456/789 的手机输入法排列。</div>
+      <div class="setting-item">
+        <label class="setting-label">总分设置（减法模式生效）</label>
+        <div class="quick-row">
+          <button class="quick-score-btn" data-quick="60">60</button>
+          <button class="quick-score-btn" data-quick="100">100</button>
+          <button class="quick-score-btn" data-quick="120">120</button>
+          <button class="quick-score-btn" data-quick="150">150</button>
+        </div>
+        <input type="number" class="setting-input" id="totalScoreInput" value="100" min="1" max="999" />
+      </div>
+      <div class="setting-item">
+        <label class="setting-label">计算模式</label>
+        <div class="segment" id="modeSegment">
+          <button class="segment-btn" data-mode="subtract" id="modeSubtract"><span class="mode-sign">－</span>减法</button>
+          <button class="segment-btn" data-mode="add" id="modeAdd"><span class="mode-sign">＋</span>加法</button>
+        </div>
+      </div>
+      <div class="setting-item">
+        <div class="setting-row">
+          <label class="setting-label setting-label-inline" for="customSwitch">启用自定义数值按钮</label>
+          <button type="button" class="mini-switch" id="customSwitch" aria-label="启用自定义数值按钮" aria-pressed="false">
+            <span class="mini-track"><span class="mini-knob"></span></span>
+          </button>
+        </div>
+        <div id="customValueBox" style="display:none; margin-top:12px;">
+          <div class="custom-value-row">
+            <input type="range" class="custom-range" id="customRange" min="0.05" max="9.9" step="0.05" value="1.5" aria-label="自定义扣分数值" />
+            <span class="custom-value-num" id="customValueNum">1.5</span>
+          </div>
+          <div class="custom-value-hint">键盘上会多出一个按键，按下去就扣这个分数（0.05～9.9）。</div>
+        </div>
+      </div>
+      <div class="setting-item">
+        <div class="setting-row">
+          <label class="setting-label setting-label-inline" for="keyOrderSwitch">键盘顺序倒转</label>
+          <button type="button" class="mini-switch" id="keyOrderSwitch" aria-label="键盘顺序倒转" aria-pressed="false">
+            <span class="mini-track"><span class="mini-knob"></span></span>
+          </button>
+        </div>
+        <div class="custom-value-hint" id="keyOrderHint" style="display:none;">开启后键盘倒转成 123 / 456 / 789，符合手机输入法习惯。</div>
+      </div>
+      <div class="setting-item">
+        <label class="setting-label">主题色（日间模式）</label>
+        <div class="theme-color-row">
+          <button class="color-dot" data-theme-color="red"   style="background:#e57373"></button>
+          <button class="color-dot" data-theme-color="pink"  style="background:#e91e8c"></button>
+          <button class="color-dot" data-theme-color="purple" style="background:#9c7bd8"></button>
+          <button class="color-dot" data-theme-color="blue"  style="background:#6b9bd8"></button>
+          <button class="color-dot" data-theme-color="teal"  style="background:#4fb3a9"></button>
+          <button class="color-dot" data-theme-color="green" style="background:#7cb342"></button>
+          <button class="color-dot" data-theme-color="gray"  style="background:#909399"></button>
+        </div>
+      </div>
+      <div class="setting-item">
+        <label class="setting-label">等级显示（替代表情）</label>
+        <div class="segment" id="gradeSegment">
+          <button class="segment-btn" id="gradeOff">关闭</button>
+          <button class="segment-btn" id="gradeOn">开启</button>
+        </div>
+        <div id="gradeEditor" style="display:none; margin-top:12px;">
+          <div class="grade-hint">从高到低自动排序。点名字改等级名，点分界数字改"满多少分进入该等级"。最后一行是最低档：低于上一行分界值即为此档。</div>
+          <div id="gradeRows"></div>
+          <div class="grade-actions-row">
+            <button type="button" class="grade-sort-btn" id="gradeSort">↓ 应用排序</button>
+            <button type="button" class="grade-add-btn" id="gradeAdd">＋ 添加等级</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-btn cancel" id="cancelSettings">取消</button>
+        <button class="modal-btn save" id="saveSettings">保存</button>
+      </div>
+    </div>
+    <div class="toast-mask" id="toastMask">
+      <div class="toast-card">
+        <div class="toast-title" id="toastTitle"></div>
+        <div class="toast-body" id="toastBody"></div>
+        <button class="toast-btn" id="toastOk">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
