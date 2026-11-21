@@ -15,7 +15,7 @@
   var customEnabled = false; // 自定义数值键开关
   var customValue = 1.5;     // 自定义数值（0.05~9.9，0.05 步长）
   var keyOrderReversed = false; // 键盘顺序倒转：true 时 1-9 反转成手机输入法顺序
-  var APP_VERSION = '2.0.1'; // 当前版本，用于「查看更新」提示
+  var APP_VERSION = '2.0.2'; // 当前版本，用于「查看更新」提示
   var CUSTOM_MIN = 0.05;
   var CUSTOM_MAX = 9.9;
 
@@ -394,7 +394,7 @@
     setLocalData('calcMode', calcMode);
     setLocalData('themeColor', document.body.getAttribute('data-theme-color') || 'pink');
     setLocalData('gradeLevel', gradeLevel ? 'on' : 'off');
-    setLocalData('grades', JSON.stringify(grades));
+    setLocalData('grades', grades); // setLocalData 内部已做 JSON.stringify，勿重复转
   }
   function syncGradeToggle() {
     var on = document.getElementById('gradeOn');
@@ -436,12 +436,16 @@
         if (gradesRaw !== null) {
           try {
             var g = JSON.parse(gradesRaw);
+            // 兼容旧版把数组二次序列化后存成字符串的历史数据
+            if (typeof g === 'string') { g = JSON.parse(g); }
             if (Object.prototype.toString.call(g) === '[object Array]') {
-              grades = g.filter(function (row) {
-                return row && typeof row.name === 'string' && row.name.length > 0 && row.name.length <= 4 && typeof row.min === 'number';
+              var loaded = g.filter(function (row) {
+                return row && typeof row.name === 'string' && row.name.length > 0 && row.name.length <= 4 &&
+                  (typeof row.min === 'number' || row.min === null);
               }).slice(0, 8);
+              if (loaded.length >= 2) { grades = loaded; }
             }
-          } catch (e) { grades = []; }
+          } catch (e) { /* 坏数据：保留内置默认表，不写空数组 */ }
         }
         updateDisplay();
         renderGradeEditor();
@@ -777,11 +781,16 @@
     gradeLevel = true;
     syncGradeToggle();
     renderGradeEditor();
+    setLocalData('gradeLevel', 'on');   // 开关点一下就落盘，与其它开关一致
+    setLocalData('grades', grades);     // 顺带把刚补出来的默认等级表存住
+    updateDisplay();
   });
   document.getElementById('gradeOff').addEventListener('click', function () {
     vibrateShort();
     gradeLevel = false;
     syncGradeToggle();
+    setLocalData('gradeLevel', 'off');
+    updateDisplay();
   });
   document.getElementById('gradeSort').addEventListener('click', function () {
     vibrateShort();

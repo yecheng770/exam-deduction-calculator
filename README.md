@@ -2,7 +2,7 @@
 
 **从满分往下扣的改卷神器 —— 为「改卷时只知道扣了多少分」的老师设计。**
 
-[![Version](https://img.shields.io/badge/version-2.0.1-ff2442)](#-功能特性)
+[![Version](https://img.shields.io/badge/version-2.0.2-ff2442)](#-功能特性)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![No Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](#-技术实现)
 [![Offline Ready](https://img.shields.io/badge/offline-✓-blue)](#-技术实现)
@@ -110,7 +110,7 @@ npx serve .
 ## 🙌 鸣谢
 
 - 感谢所有反馈过的老师与同学
-- 本工具最初为个人自用开发，后在 [小红书](https://www.xiaohongshu.com) 以「小工具」形态发布过 v2.0.1 版本
+- 本工具最初为个人自用开发，后在 [小红书](https://www.xiaohongshu.com) 以「小工具」形态发布（当前 v2.0.2）
 
 ## 🤝 贡献
 
