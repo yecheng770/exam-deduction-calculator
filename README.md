@@ -62,7 +62,7 @@
 
 ```bash
 # GitHub Pages
-# 仓库 Settings → Pages → Source 选 main 分支即可
+# 仓库 Settings → Pages → Source 选 master 分支即可
 
 # 或任何静态服务器
 npx serve .
@@ -82,10 +82,21 @@ npx serve .
 ```
 .
 ├── index.html          # 页面结构与全部样式
-├── app.js              # 全部业务逻辑（909 行）
+├── app.js              # 全部业务逻辑
+├── tests/              # 回归测试（Node 直接跑，零依赖）
 ├── screenshots/        # README 用的 12 张实机截图
 └── README.md
 ```
+
+## 🧪 测试
+
+设置项的读写有回归测试，零依赖、不用装东西：
+
+```bash
+node tests/test-grade-persistence.js
+```
+
+它会真实加载 `app.js`，模拟「点开关 → 关页面 → 重进」，确认分数、模式、等级表、最低档都不会丢。退出码 0 表示全部通过。
 
 ## 💡 设计取舍
 
